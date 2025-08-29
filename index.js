@@ -4,6 +4,12 @@ const { CommandHandler } = require('djs-commander');
 const mongoose = require('mongoose');
 const path = require('path');
 
+const app = express();
+app.get("/", (req, res) => res.send("Bot is running!"));
+app.listen(process.env.PORT || 3000, () => {
+  console.log(`Web server running on port ${process.env.PORT || 3000}`);
+});
+
 const client = new Client({
   intents: [
     IntentsBitField.Flags.Guilds,
