@@ -27,7 +27,9 @@ module.exports = {
             });
         }
 
-        await interaction.deferReply();
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.deferReply();
+        }
 
         try {
 

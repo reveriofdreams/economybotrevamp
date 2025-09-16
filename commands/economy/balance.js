@@ -12,7 +12,9 @@ module.exports = {
 
         const targetUser = interaction.options.getUser('target-user') || interaction.user;
 
-        await interaction.deferReply();
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.deferReply();
+        }
 
         try {
             let userProfile = await UserProfile.findOne({ userId: targetUser.id });
