@@ -1,11 +1,16 @@
-const { ApplicationCommandOptionType } = require('discord.js');
+const { ApplicationCommandOptionType, EmbedBuilder } = require('discord.js');
 const UserProfile = require('../../schemas/UserProfile');
 
 module.exports = {
     run: async ({ interaction }) => {
         if (!interaction.inGuild()) {
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ff0000')
+                .setTitle('❌ Error')
+                .setDescription('This command can only be executed inside a server.')
+                .setTimestamp();
             return interaction.reply({
-                content: "This command can only be executed inside a server.",
+                embeds: [errorEmbed],
                 ephemeral: true,
             });
         }
@@ -24,26 +29,40 @@ module.exports = {
                 await userProfile.save();
             }
 
-            let replyMessage;
-            if (targetUser.id === interaction.user.id) {
-                replyMessage = `Your current balance is **$${userProfile.balance}**.`;
-            } else {
-                replyMessage = `<@${targetUser.id}>'s current balance is **$${userProfile.balance}**.`;
-            }
+            const balanceEmbed = new EmbedBuilder()
+                .setColor('#00ff00')
+                .setTitle('💰 Balance Information')
+                .setThumbnail(targetUser.displayAvatarURL())
+                .addFields({
+                    name: targetUser.id === interaction.user.id ? 'Your Balance' : `${targetUser.displayName}'s Balance`,
+                    value: `$${userProfile.balance}`,
+                    inline: true
+                })
+                .setTimestamp();
 
-            await interaction.editReply(replyMessage);
+            await interaction.editReply({ embeds: [balanceEmbed] });
 
         } catch (error) {
             console.error(`Error handling /balance for user ${interaction.user.id} (target: ${targetUser.id}):`, error);
 
             if (interaction.deferred || interaction.replied) {
+                const errorEmbed = new EmbedBuilder()
+                    .setColor('#ff0000')
+                    .setTitle('❌ Error')
+                    .setDescription('An unexpected error occurred while trying to check the balance. Please try again later.')
+                    .setTimestamp();
                 await interaction.editReply({
-                    content: "An unexpected error occurred while trying to check the balance. Please try again later.",
+                    embeds: [errorEmbed],
                     ephemeral: true,
                 });
             } else {
+                const errorEmbed = new EmbedBuilder()
+                    .setColor('#ff0000')
+                    .setTitle('❌ Error')
+                    .setDescription('An unexpected error occurred. Please try again later.')
+                    .setTimestamp();
                 await interaction.reply({
-                    content: "An unexpected error occurred. Please try again later.",
+                    embeds: [errorEmbed],
                     ephemeral: true,
                 });
             }

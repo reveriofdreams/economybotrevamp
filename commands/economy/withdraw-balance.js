@@ -1,18 +1,28 @@
-const { ApplicationCommandOptionType, PermissionFlagsBits } = require('discord.js');
+const { ApplicationCommandOptionType, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const UserProfile = require('../../schemas/UserProfile');
 
 module.exports = {
     run: async ({ interaction }) => {
         if (!interaction.inGuild()) {
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ff0000')
+                .setTitle('❌ Error')
+                .setDescription('This command can only be executed inside a server.')
+                .setTimestamp();
             return interaction.reply({
-                content: "This command can only be executed inside a server.",
+                embeds: [errorEmbed],
                 ephemeral: true,
             });
         }
 
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ff0000')
+                .setTitle('❌ Access Denied')
+                .setDescription('You must be an administrator to use this command.')
+                .setTimestamp();
             return interaction.reply({
-                content: "You must be an administrator to use this command.",
+                embeds: [errorEmbed],
                 ephemeral: true,
             });
         }
@@ -21,8 +31,13 @@ module.exports = {
         const amount = interaction.options.getNumber('amount');
 
         if (amount <= 0 || !Number.isInteger(amount)) {
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ff0000')
+                .setTitle('❌ Invalid Amount')
+                .setDescription('You must specify a positive whole number amount to withdraw.')
+                .setTimestamp();
             return interaction.reply({
-                content: "You must specify a positive whole number amount to withdraw.",
+                embeds: [errorEmbed],
                 ephemeral: true,
             });
         }
@@ -37,8 +52,30 @@ module.exports = {
 
             if (!userProfile || userProfile.balance < amount) {
                 const currentBalance = userProfile ? userProfile.balance : 0;
+                const insufficientEmbed = new EmbedBuilder()
+                    .setColor('#ffaa00')
+                    .setTitle('⚠️ Insufficient Funds')
+                    .setThumbnail(targetUser.displayAvatarURL())
+                    .addFields(
+                        {
+                            name: 'Attempted Withdrawal',
+                            value: `$${amount}`,
+                            inline: true
+                        },
+                        {
+                            name: 'Current Balance',
+                            value: `$${currentBalance}`,
+                            inline: true
+                        },
+                        {
+                            name: 'User',
+                            value: `<@${targetUser.id}>`,
+                            inline: true
+                        }
+                    )
+                    .setTimestamp();
                 return interaction.editReply({
-                    content: `The user <@${targetUser.id}> does not have enough $ to withdraw $${amount}. Their current balance is $${currentBalance}.`,
+                    embeds: [insufficientEmbed],
                     ephemeral: false,
                 });
             }
@@ -46,25 +83,51 @@ module.exports = {
             userProfile.balance -= amount;
             await userProfile.save();
 
-            let replyMessage;
-            if (targetUser.id === interaction.user.id) {
-                replyMessage = `Successfully withdrew $${amount} from your balance. Your new balance is $${userProfile.balance}.`;
-            } else {
-                replyMessage = `Successfully withdrew $${amount} from <@${targetUser.id}>'s balance. Their new balance is $${userProfile.balance}. ✅`;
-            }
+            const successEmbed = new EmbedBuilder()
+                .setColor('#00ff00')
+                .setTitle('✅ Balance Withdrawn Successfully')
+                .setThumbnail(targetUser.displayAvatarURL())
+                .addFields(
+                    {
+                        name: 'Amount Withdrawn',
+                        value: `$${amount}`,
+                        inline: true
+                    },
+                    {
+                        name: 'New Balance',
+                        value: `$${userProfile.balance}`,
+                        inline: true
+                    },
+                    {
+                        name: 'User',
+                        value: targetUser.id === interaction.user.id ? 'You' : `<@${targetUser.id}>`,
+                        inline: true
+                    }
+                )
+                .setTimestamp();
 
-            interaction.editReply(replyMessage);
+            interaction.editReply({ embeds: [successEmbed] });
 
         } catch (error) {
             console.error(`Error handling /withdraw for ${targetUser.id}:`, error);
             if (interaction.deferred || interaction.replied) {
+                const errorEmbed = new EmbedBuilder()
+                    .setColor('#ff0000')
+                    .setTitle('❌ Error')
+                    .setDescription('An unexpected error occurred while trying to withdraw from the balance. Please try again later.')
+                    .setTimestamp();
                 await interaction.editReply({
-                    content: "An unexpected error occurred while trying to withdraw from the balance. Please try again later.",
+                    embeds: [errorEmbed],
                     ephemeral: true,
                 });
             } else {
+                const errorEmbed = new EmbedBuilder()
+                    .setColor('#ff0000')
+                    .setTitle('❌ Error')
+                    .setDescription('An unexpected error occurred. Please try again later.')
+                    .setTimestamp();
                 await interaction.reply({
-                    content: "An unexpected error occurred. Please try again later.",
+                    embeds: [errorEmbed],
                     ephemeral: true,
                 });
             }
